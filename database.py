@@ -5,9 +5,9 @@ import logging
 # ------------------- DATABASE CONFIGURATION ------------------- #
 DATABASE_CONFIG = {
     'host': "135.181.44.193",
-    'database': "svbotdb",
-    'user': "umidjonpr",
-    'password': "umidjonpr2006",
+    'database': "isaevdb",
+    'user': "isaevpr",
+    'password': "isaevpr1234",
     'port': "5432"
 }
 

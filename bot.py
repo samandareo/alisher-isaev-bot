@@ -20,7 +20,7 @@ import functions as fns
 from State.userState import UserState, AdminState, AdminStateOne, UserMessagesToAdmin, CreatePoll, PollResults, ChangeBooks
 import Keyboards.keyboards as kb
 
-from credentials import admins
+from credentials import admins, CHANNEL_ID
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ async def handle_start(message: Message) -> None:
         await message.reply(f"Assalomu alekum, {message.from_user.first_name}. \nXush kelibsiz!\n\nQuyida barcha kitoblarni ko'rishingiz mumkin!", reply_markup=kb.contact_with_admin)
         msg_url = await fetch_query(f"SELECT b.book_location_link FROM books b;")
         for msg in msg_url:
-            pattern = r"https://t\.me/c/2151076535/(\d+)"
+            pattern = r"https://t\.me/c/2343907878/(\d+)"
             match = re.match(pattern, msg['book_location_link'])
             if match:
                 msg_id = int(match.group(1))
@@ -72,7 +72,7 @@ async def handle_start(message: Message) -> None:
         phone_number, book_id = special_data.split('_')
         print(phone_number, book_id)
         msg_url = await fetch_query(f"SELECT b.book_location_link FROM books b WHERE b.book_id = {book_id};")
-        pattern = r"https://t\.me/c/2151076535/(\d+)"
+        pattern = r"https://t\.me/c/2343907878/(\d+)"
         match = re.match(pattern, msg_url[0]['book_location_link'])
 
         if match:
@@ -87,7 +87,7 @@ async def handle_start(message: Message) -> None:
         await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, phone_number))
 
     else:
-        await message.reply(f"Assalomu alekum, {message.from_user.first_name}. \nXush kelibsiz!\n\nSizni qiziqtirayotgan kitobchani olish uchun, iltimos biz sms orqali yuborgan maxsus link orqali botga tashrif buyuring😊\nShunda men siz hohlagan kitobchani yuboraman.\n\nHurmat bilan Sardor Valixanov!", reply_markup=kb.contact_with_admin)
+        await message.reply(f"Assalomu alekum, {message.from_user.first_name}. \nXush kelibsiz!", reply_markup=kb.contact_with_admin)
 
         user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
         await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, None))
