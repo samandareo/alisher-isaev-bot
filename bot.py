@@ -82,7 +82,7 @@ async def handle_start(message: Message, state: FSMContext) -> None:
             
             await execute_query(f"UPDATE users SET friends_count = friends_count + 1 WHERE user_id = '{part_two}';")
             try:
-                increase_friend_count = f"UPDATE users SET friend_count = friend_count + 1 WHERE user_id = '{part_two}';"
+                increase_friend_count = f"UPDATE users SET friends_count = friends_count + 1 WHERE user_id = '{part_two}';"
                 await execute_query(increase_friend_count)
             except:
                 pass
