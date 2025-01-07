@@ -12,12 +12,13 @@ from aiogram.filters.command import CommandStart
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, FSInputFile, Poll
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, FSInputFile, Poll, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.exceptions import TelegramRetryAfter
+from aiogram.utils.markdown import link
 
 from database import execute_query, fetch_query, init_db
 import functions as fns
-from State.userState import UserState, AdminState, AdminStateOne, UserMessagesToAdmin, CreatePoll, PollResults, ChangeBooks
+from State.userState import UserState, AdminState, AdminStateOne, UserMessagesToAdmin, CreatePoll, PollResults, ChangeBooks, WelcomePoll
 import Keyboards.keyboards as kb
 
 from credentials import admins, CHANNEL_ID
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 
-from credentials import BOT_TOKEN, CHANNEL_ID, APPEAL_CHANNEL_ID, TEST_BOT_TOKEN, REPORT_ID
+from credentials import BOT_TOKEN, CHANNEL_ID, APPEAL_CHANNEL_ID, TEST_BOT_TOKEN, REPORT_ID, BOT_USERNAME
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher(storage=MemoryStorage())
 
@@ -48,13 +49,13 @@ async def handler_poll(poll: Poll):
     await fns.change_data(poll_id,data)
 
 @dp.message(CommandStart())
-async def handle_start(message: Message) -> None:
+async def handle_start(message: Message, state: FSMContext) -> None:
     # Extract the special link data (phone number and book ID)
     print(message.text)
     special_data = message.text.split('/start ')[1] if '/start ' in message.text else None
     print(special_data)
     if special_data and special_data == 'all':
-        await message.reply(f"Assalomu alekum, {message.from_user.first_name}. \nXush kelibsiz!\n\nQuyida barcha kitoblarni ko'rishingiz mumkin!", reply_markup=kb.contact_with_admin)
+        await message.reply(f"Assalomu alekum, {message.from_user.first_name}. \nXush kelibsiz!\n\nQuyida barcha kitoblarni ko'rishingiz mumkin!", reply_markup=kb.main_menu_button)
         msg_url = await fetch_query(f"SELECT b.book_location_link FROM books b;")
         for msg in msg_url:
             pattern = r"https://t\.me/c/2343907878/(\d+)"
@@ -67,32 +68,85 @@ async def handle_start(message: Message) -> None:
             await bot.copy_message(chat_id=message.chat.id, from_chat_id=CHANNEL_ID, message_id=msg_id)
         user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
         await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, None))
-
     elif special_data:
-        phone_number, book_id = special_data.split('_')
-        print(phone_number, book_id)
-        msg_url = await fetch_query(f"SELECT b.book_location_link FROM books b WHERE b.book_id = {book_id};")
-        pattern = r"https://t\.me/c/2343907878/(\d+)"
-        match = re.match(pattern, msg_url[0]['book_location_link'])
+        part_one, part_two = special_data.split('_')
+        if part_one == "invite":
+            user_exist = await fetch_query(f"SELECT user_id FROM users WHERE user_id = '{message.from_user.id}';")
+            if user_exist:
+                await message.reply(f"Assalomu alaykum, {message.from_user.first_name}. \nXush kelibsiz!", reply_markup=kb.main_menu_button)
+                await bot.send_message(chat_id=part_two, text=f"{message.from_user.first_name} siz yuborgan link orqali tashrif buyurdi. Ammo u allaqachon botga tashrif buyurgan edi😔!")
+                return
 
-        if match:
-            msg_id = int(match.group(1))
-        await message.reply(f"Assalomu alaykum, {message.from_user.first_name}!",reply_markup=kb.contact_with_admin)
-        
-        # Forward book from private channel to user
-        # Replace 'YOUR_CHANNEL_ID' with actual channel ID
-        await bot.copy_message(chat_id=message.chat.id, from_chat_id=CHANNEL_ID, message_id=msg_id)
-                # Store user information in users table
-        user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
-        await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, phone_number))
+            user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
+            await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, None))
+            
+            await execute_query(f"UPDATE users SET friends_count = friends_count + 1 WHERE user_id = '{part_two}';")
+            try:
+                increase_friend_count = f"UPDATE users SET friend_count = friend_count + 1 WHERE user_id = '{part_two}';"
+                await execute_query(increase_friend_count)
+            except:
+                pass
+
+            await bot.send_message(chat_id=part_two, text=f"👤{message.from_user.first_name} siz yuborgan link orqali tashrif buyurdi.")
+            await message.reply(f"Assalomu alaykum, xush kelibsiz {message.from_user.first_name}!\nIltimos quyidagi bir qancha savollarga javob berishingizni so'raymiz!")
+            await message.answer("Iltimos, ismingizni kiriting:")
+            await state.set_state(WelcomePoll.user_fullname)
+            return
+        else:
+            phone_number, book_id = part_one, part_two
+            print(phone_number, book_id)
+            msg_url = await fetch_query(f"SELECT b.book_location_link FROM books b WHERE b.book_id = {book_id};")
+            pattern = r"https://t\.me/c/2343907878/(\d+)"
+            match = re.match(pattern, msg_url[0]['book_location_link'])
+
+            if match:
+                msg_id = int(match.group(1))
+            await message.reply(f"Assalomu alaykum, {message.from_user.first_name}!",reply_markup=kb.main_menu_button)
+            
+            # Forward book from private channel to user
+            # Replace 'YOUR_CHANNEL_ID' with actual channel ID
+            await bot.copy_message(chat_id=message.chat.id, from_chat_id=CHANNEL_ID, message_id=msg_id)
+                    # Store user information in users table
+            user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
+            await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, phone_number))
 
     else:
-        await message.reply(f"Assalomu alekum, {message.from_user.first_name}. \nXush kelibsiz!", reply_markup=kb.contact_with_admin)
+        await message.reply(f"Assalomu alekum, {message.from_user.first_name}. \nXush kelibsiz!", reply_markup=kb.main_menu_button)
 
         user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
         await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, None))
 
+@dp.message(WelcomePoll.user_fullname)
+async def take_fullname(message: Message, state: FSMContext) -> None:
+    if message.text == '!cancel':
+        await message.reply("Jarayon bekor qilindi!")
+        await state.clear()
+        return
+    await state.update_data(user_fullname=message.text)
+    await message.reply("Iltimos, telefon raqamingizni kiriting:", reply_markup=kb.request_phone_number)
+    await state.set_state(WelcomePoll.user_phone)
 
+@dp.message(WelcomePoll.user_phone)
+async def take_phone(message: Message, state: FSMContext) -> None:
+    if message.text == '!cancel':
+        await message.reply("Jarayon bekor qilindi!")
+        await state.clear()
+        return
+    await state.update_data(user_phone=message.contact.phone_number)
+    temporary_msg =await message.reply("Qabul qilindi!", reply_markup=ReplyKeyboardRemove())
+    await temporary_msg.delete()
+    await message.answer("Qaysi soha vakilisiz?", reply_markup=kb.user_jobs)
+    await state.set_state(WelcomePoll.user_job)
+
+@dp.callback_query(WelcomePoll.user_job)
+async def take_job(callback_data: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    adding_info_query = f"INSERT INTO user_poll (user_id, user_fullname, phone_number, job, date) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING"
+    await execute_query(adding_info_query,(str(callback_data.from_user.id), data['user_fullname'], data['user_phone'], callback_data.data))
+    await callback_data.message.reply(f"Savollarimizga javob berganingiz uchun tashakkur {data.get('user_fullname')}!", reply_markup=kb.main_menu_button)
+    await state.clear()
+    return
+    
 @dp.message(UserState.message_text_id)
 async def take_id(message: Message, state: FSMContext) -> None:
     stop_msg_text = str(message.text)
@@ -569,6 +623,13 @@ async def take_input(message: Message, state: FSMContext):
         await message.reply("Iltimos, murojaat xabarini yuboring.", reply_markup=ReplyKeyboardRemove())
         await state.set_state(UserMessagesToAdmin.message_text)
         return
+    elif message.text == '📊Statistika':
+        res = await fns.get_statistic(str(message.from_user.id))
+        await message.answer(res)
+        return
+    elif message.text == "🤝Do'stlarni taklif qilish":
+        await message.reply(f"Quyidagi linkni orqali do'stlaringizni taklif qiling! Agarda 10 ta do'stingiz shu link orqali botimizga tashrif buyursa, siz maxsus qo'llanma va kitoblarga ega bo'lishingiz mumkin.\n\nLink: https://t.me/{BOT_USERNAME}?start=invite_{message.from_user.id}", reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Do'stlarga yuborish", url=f"https://t.me/share/url?&url=https://t.me/{BOT_USERNAME}?start=invite_{message.from_user.id}&text=Yuqoridagi link orqali botimizga tashrif buyuring va foydali ma'lumotlardan bahramand bo'ling!")]]))
+        return
     elif message.text == '/stat':
         if message.from_user.id not in admins:
             await message.answer("Siz admin emassiz!")
@@ -584,6 +645,15 @@ async def take_input(message: Message, state: FSMContext):
         if path:
             file = FSInputFile(path,filename=path[7:])
             await bot.send_document(chat_id=message.chat.id, document=file,caption="Foydalanuvchilar ro'yxati")
+    elif message.text == '/registered_users':
+        if message.from_user.id not in admins:
+            await message.answer("Siz admin emassiz!")
+            return
+        path = await fns.get_registered_users()
+        if path:
+            file = FSInputFile(path,filename=path[7:])
+            await bot.send_document(chat_id=message.chat.id, document=file,caption="Ro'yxatdan o'tgan foydalanuvchilar ro'yxati")
+
     elif message.text == '/test':
         await bot.send_message(chat_id=REPORT_ID, text="Test xabar")
     elif message.text == '/polls':

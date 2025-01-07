@@ -36,3 +36,8 @@ class ChangeBooks(StatesGroup):
     book_link_edit = State()
     new_book_id_proove = State()
     book_new_id_edit = State()
+
+class WelcomePoll(StatesGroup):
+    user_fullname = State()
+    user_phone = State()
+    user_job = State()

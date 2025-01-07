@@ -279,6 +279,27 @@ async def get_users_data_as_excel():
         print(e)
         return None
 
+async def get_registered_users():
+    try:
+        query = """
+        SELECT user_id, user_fullname, phone_number, job, DATE(date) as date
+        FROM user_poll
+        """
+        data = await fetch_query(query=query)
+        if not data:
+            return "Ma'lumot mavjud emas!"
+        df = pd.DataFrame(data)
+
+        df.columns = ['user_id', 'user_fullname', 'phone_number', 'job', 'date']
+
+        now = datetime.now().strftime("%Y_%m_%d")
+        df.to_excel(f'extras/registered_users_{now}.xlsx', index=False)
+        return f"extras/registered_users_{now}.xlsx"
+
+    except Exception as e:
+        print(e)
+        return None
+
 polls = []
 
 
@@ -443,3 +464,29 @@ async def delete_book(book_id):
     except Exception as e:
         logging.error(f"Error: {e}")
         return None
+
+async def get_statistic(user_id):
+    query = "SELECT * FROM users;"
+    users = await fetch_query(query)
+    df = pd.DataFrame(users)
+    df.columns = ['id', 'user_id', 'username', 'name', 'phone_number', 'created_at', 'updated_at', 'cur_msg_id', 'is_check', 'friends_count']
+    # I need to create a new column as user_rank based on their the number of friends
+    df['user_rank'] = df['friends_count'].rank(method='min', ascending=False).astype(int)
+
+    sorted_df = df.sort_values(by="friends_count", ascending=False)
+    sorted_df["user_rank"] = range(1, len(sorted_df) + 1)
+
+    user_stat = sorted_df[sorted_df['user_id'] == user_id]
+    user_stat = user_stat[['name', 'friends_count', 'user_rank']]
+    user_stat = user_stat.to_dict('records')[0]
+
+    top_10_users = sorted_df.head(10)
+    top_10_users = top_10_users[['name', 'friends_count', 'user_rank']]
+    top_10_users = top_10_users.to_dict('records')
+
+    final_result = "🔰 Top 10 foydalanuvchilar 🔰\n\n"
+    for user in top_10_users:
+        final_result += f"{user['user_rank']}. {user['name']} - {user['friends_count']} ta do'stlar\n"
+    
+    final_result = final_result + f"\nSizning ma'lumotlaringiz:\n{user_stat['user_rank']}. {user_stat['name']} - {user_stat['friends_count']} ta do'stlar"
+    return final_result

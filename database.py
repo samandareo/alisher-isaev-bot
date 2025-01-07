@@ -3,14 +3,22 @@ from contextlib import asynccontextmanager
 import logging
 
 # ------------------- DATABASE CONFIGURATION ------------------- #
-DATABASE_CONFIG = {
-    'host': "135.181.44.193",
-    'database': "isaevdb",
-    'user': "isaevpr",
-    'password': "isaevpr1234",
+# DATABASE_CONFIG = {
+#     'host': "135.181.44.193",
+#     'database': "isaevdb",
+#     'user': "isaevpr",
+#     'password': "isaevpr1234",
+#     'port': "5432"
+# }
+
+# Test database
+DATABASE_CONFIG ={
+    'host': "localhost",
+    'database': "testdb",
+    'user': "postgres",
+    'password': "sm1234",
     'port': "5432"
 }
-
 pool = None
 
 # Initialize logging
