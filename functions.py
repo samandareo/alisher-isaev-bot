@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 
 from database import execute_query, fetch_query, init_db
 from bot import bot
-
 logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(lineno)s => %(message)s")
 
 from credentials import REPORT_ID

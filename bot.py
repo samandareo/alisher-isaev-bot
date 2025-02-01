@@ -23,8 +23,12 @@ import Keyboards.keyboards as kb
 
 from credentials import admins, CHANNEL_ID
 
+# send messages for users
+from messaging import get_users_for_send_messages
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+scheduler = AsyncIOScheduler()
 
 
 
@@ -704,18 +708,16 @@ async def take_input(message: Message, state: FSMContext):
         await state.set_state(ChangeBooks.choose_action)
         return
         
-        
-    
+
+@scheduler.scheduled_job('interval', hours=1)
+async def scheduler_task():
+    await get_users_for_send_messages(bot=bot)
 
 
 
 async def main() -> None:
     await init_db()
-    # # await initialize_clients()
-    # scheduler = AsyncIOScheduler()
-    # # scheduler.add_job(assign_task_to_operator, 'interval',hours=1)
-    # scheduler.add_job(fns.send_message_to_users, 'interval', hours=2)
-    # scheduler.start()
+    scheduler.start()
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
