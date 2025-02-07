@@ -542,7 +542,7 @@ async def handle_start_message(message, state):
             print(phone_number, book_id)
             query = f"SELECT start_msg_id, links FROM start_messages WHERE start_msg_id = '{book_id}';"
             messages = await fetch_query(query)
-            links = messages[0]['links']
+            links = json.loads(messages[0]['links'])
             with open('extras/messages.json', 'r') as file:
                 data = json.load(file)
 
