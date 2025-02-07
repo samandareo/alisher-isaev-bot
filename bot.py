@@ -153,22 +153,37 @@ async def take_job(callback_data: CallbackQuery, state: FSMContext) -> None:
     
 @dp.message(UserState.message_text_id)
 async def take_id(message: Message, state: FSMContext) -> None:
+    with open('extras/messages.json', 'r') as file:
+        data = json.load(file)
+
     stop_msg_text = str(message.text)
     if stop_msg_text == '!cancel':
         await state.clear()
         await message.reply("Jarayon bekor qilindi!")
         return
-    elif not message.text.isdigit():
-        await message.reply("Iltimos, xabar raqamini to'g'ri kiriting!")
+    elif message.text.startswith('start_msg'):
+        await state.update_data(message_text_id=message.text)
+        if message.text not in data:
+            await message.reply("Bunday raqamli /start xabar topilmadi! Demak yangi xabar sifatida qo'shamiz.")
+            await message.reply("Yangi xabar matnini kiriting:")
+            await state.set_state(UserState.message_text)
+        elif message.text in data:
+            message_text = data[message.text]
+            await message.reply(f"Xabarning hozirgi holati: {message_text}\n\nIltimos yangi xabar matnini kiriting:")
+            await state.set_state(UserState.message_text)
+    elif message.text.startswith('msg'):
+        await state.update_data(message_text_id=message.text)
+        if message.text not in data:
+            await message.reply("Bunday raqamli xabar topilmadi! Demak yangi xabar sifatida qo'shamiz.")
+            await message.reply("Yangi xabar matnini kiriting:")
+            await state.set_state(UserState.message_text)
+        elif message.text in data:
+            message_text = data[message.text]
+            await message.reply(f"Xabarning hozirgi holati: {message_text}\n\nIltimos yangi xabar matnini kiriting:")
+            await state.set_state(UserState.message_text)
+    else:
+        await message.reply("Noto'g'ri raqam kiritildi! Iltimos qaytadan urinib ko'ring.")
         await state.set_state(UserState.message_text_id)
-        return
-    await state.update_data(message_text_id=message.text)
-    with open('extras/messages.json', 'r') as file:
-        data = json.load(file)
-    
-    message_text = data[f"msg{message.text}"]
-    await message.reply(f"Xabarning hozirgi holati: {message_text}\n\nIltimos yangi xabar matnini kiriting:")
-    await state.set_state(UserState.message_text)
 
 @dp.message(UserState.message_text)
 async def take_text(message: Message, state: FSMContext) -> None:
@@ -177,14 +192,14 @@ async def take_text(message: Message, state: FSMContext) -> None:
         await message.reply("Jarayon bekor qilindi!")
         return
     
+    with open('extras/messages.json', 'r') as file:
+        data = json.load(file)
+
     new_data = await state.get_data()
     message_text_id = new_data.get('message_text_id')
     message_text = message.text
 
-    with open('extras/messages.json', 'r') as file:
-        data = json.load(file)
-    
-    data[f"msg{message_text_id}"] = message_text
+    data[message_text_id] = message_text
 
     with open('extras/messages.json', 'w') as file:
         json.dump(data, file, indent=4)
