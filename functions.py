@@ -542,7 +542,7 @@ async def handle_start_message(message, state):
             print(phone_number, book_id)
             query = f"SELECT start_msg_id, links FROM start_messages WHERE start_msg_id = '{book_id}';"
             messages = await fetch_query(query)
-            links = json.loads(messages[0]['links'])
+            links = json.loads(messages['links'])
             with open('extras/messages.json', 'r') as file:
                 data = json.load(file)
 
@@ -555,9 +555,9 @@ async def handle_start_message(message, state):
                                 logging.error(f"No local message found for key '{message_key}'")
                                 continue
                             else:
-                                book_name = await fetch_query(f"SELECT book_name FROM books WHERE book_id = '{book_id}';")
+                                book = await fetch_query(f"SELECT book_name FROM books WHERE book_id = '{book_id}';")
                                 message_text = data[message_key]
-                                personalized_text = message_text.replace("$name", message.from_user.first_name).replace("$book_name", book_name[0]['book_name'])
+                                personalized_text = message_text.replace("$name", message.from_user.first_name).replace("$book_name", book_name['book_name'])
                                 await bot.send_message(message.chat.id, personalized_text, disable_web_page_preview=True)
                         else:
                             message_id_extracted = await extract_message_id(link)
