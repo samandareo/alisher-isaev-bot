@@ -54,7 +54,7 @@ async def handler_poll(poll: Poll):
 
 @dp.message(CommandStart())
 async def handle_start(message: Message, state: FSMContext) -> None:
-    fns.handle_start_message(message, state=state)
+    await fns.handle_start_message(message, state=state)
 
 
 @dp.message(WelcomePoll.user_fullname)
