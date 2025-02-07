@@ -54,71 +54,8 @@ async def handler_poll(poll: Poll):
 
 @dp.message(CommandStart())
 async def handle_start(message: Message, state: FSMContext) -> None:
-    # Extract the special link data (phone number and book ID)
-    print(message.text)
-    special_data = message.text.split('/start ')[1] if '/start ' in message.text else None
-    print(special_data)
-    if special_data and special_data == 'all':
-        await message.reply(f"Assalomu alekum, {message.from_user.first_name}. \nXush kelibsiz!\n\nQuyida barcha kitoblarni ko'rishingiz mumkin!", reply_markup=kb.main_menu_button)
-        msg_url = await fetch_query(f"SELECT b.book_location_link FROM books b;")
-        for msg in msg_url:
-            pattern = r"https://t\.me/c/2343907878/(\d+)"
-            match = re.match(pattern, msg['book_location_link'])
-            if match:
-                msg_id = int(match.group(1))
-            
-            if msg_id ==31:
-                continue
-            await bot.copy_message(chat_id=message.chat.id, from_chat_id=CHANNEL_ID, message_id=msg_id)
-        user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
-        await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, None))
-    elif special_data:
-        part_one, part_two = special_data.split('_')
-        if part_one == "invite":
-            user_exist = await fetch_query(f"SELECT user_id FROM users WHERE user_id = '{message.from_user.id}';")
-            if user_exist:
-                await message.reply(f"Assalomu alaykum, {message.from_user.first_name}. \nXush kelibsiz!", reply_markup=kb.main_menu_button)
-                await bot.send_message(chat_id=part_two, text=f"{message.from_user.first_name} siz yuborgan link orqali tashrif buyurdi. Ammo u allaqachon botga tashrif buyurgan edi😔!")
-                return
+    fns.handle_start_message(message, state=state)
 
-            user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
-            await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, None))
-            
-            await execute_query(f"UPDATE users SET friends_count = friends_count + 1 WHERE user_id = '{part_two}';")
-            try:
-                increase_friend_count = f"UPDATE users SET friends_count = friends_count + 1 WHERE user_id = '{part_two}';"
-                await execute_query(increase_friend_count)
-            except:
-                pass
-
-            await bot.send_message(chat_id=part_two, text=f"👤{message.from_user.first_name} siz yuborgan link orqali tashrif buyurdi.")
-            await message.reply(f"Assalomu alaykum, xush kelibsiz {message.from_user.first_name}!\nIltimos quyidagi bir qancha savollarga javob berishingizni so'raymiz!")
-            await message.answer("Iltimos, ismingizni kiriting:")
-            await state.set_state(WelcomePoll.user_fullname)
-            return
-        else:
-            phone_number, book_id = part_one, part_two
-            print(phone_number, book_id)
-            msg_url = await fetch_query(f"SELECT b.book_location_link FROM books b WHERE b.book_id = {book_id};")
-            pattern = r"https://t\.me/c/2343907878/(\d+)"
-            match = re.match(pattern, msg_url[0]['book_location_link'])
-
-            if match:
-                msg_id = int(match.group(1))
-            await message.reply(f"Assalomu alaykum, {message.from_user.first_name}!",reply_markup=kb.main_menu_button)
-            
-            # Forward book from private channel to user
-            # Replace 'YOUR_CHANNEL_ID' with actual channel ID
-            await bot.copy_message(chat_id=message.chat.id, from_chat_id=CHANNEL_ID, message_id=msg_id)
-                    # Store user information in users table
-            user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
-            await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, phone_number))
-
-    else:
-        await message.reply(f"Assalomu alekum, {message.from_user.first_name}. \nXush kelibsiz!", reply_markup=kb.main_menu_button)
-
-        user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
-        await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, None))
 
 @dp.message(WelcomePoll.user_fullname)
 async def take_fullname(message: Message, state: FSMContext) -> None:

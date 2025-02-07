@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import re
 from datetime import datetime, timedelta
 
 
@@ -8,8 +9,11 @@ from database import execute_query, fetch_query, init_db
 from bot import bot
 logging.basicConfig(level=logging.INFO, format="%(asctime)s:%(lineno)s => %(message)s")
 
-from credentials import REPORT_ID
+from credentials import REPORT_ID, CHANNEL_ID
+import Keyboards.keyboards as kb
+from State.userState import WelcomePoll
 
+from messaging import extract_message_id
 import pandas as pd
 
 
@@ -489,3 +493,87 @@ async def get_statistic(user_id):
     
     final_result = final_result + f"\nSizning ma'lumotlaringiz:\n{user_stat['user_rank']}. {user_stat['name']} - {user_stat['friends_count']} ta do'stlar"
     return final_result
+
+
+
+async def handle_start_message(message, state):
+    print(message.text)
+    special_data = message.text.split('/start ')[1] if '/start ' in message.text else None
+    if special_data and special_data == 'all':
+        await message.reply(f"Assalomu alekum, {message.from_user.first_name}. \nXush kelibsiz!\n\nQuyida barcha kitoblarni ko'rishingiz mumkin!", reply_markup=kb.main_menu_button)
+        msg_url = await fetch_query(f"SELECT b.book_location_link FROM books b;")
+        for msg in msg_url:
+            pattern = r"https://t\.me/c/2343907878/(\d+)"
+            match = re.match(pattern, msg['book_location_link'])
+            if match:
+                msg_id = int(match.group(1))
+            
+            if msg_id ==31:
+                continue
+            await bot.copy_message(chat_id=message.chat.id, from_chat_id=CHANNEL_ID, message_id=msg_id)
+        user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
+        await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, None))
+    elif special_data:
+        part_one, part_two = special_data.split('_')
+        if part_one == "invite":
+            user_exist = await fetch_query(f"SELECT user_id FROM users WHERE user_id = '{message.from_user.id}';")
+            if user_exist:
+                await message.reply(f"Assalomu alaykum, {message.from_user.first_name}. \nXush kelibsiz!", reply_markup=kb.main_menu_button)
+                await bot.send_message(chat_id=part_two, text=f"{message.from_user.first_name} siz yuborgan link orqali tashrif buyurdi. Ammo u allaqachon botga tashrif buyurgan edi😔!")
+                return
+
+            user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
+            await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, None))
+            
+            await execute_query(f"UPDATE users SET friends_count = friends_count + 1 WHERE user_id = '{part_two}';")
+            try:
+                increase_friend_count = f"UPDATE users SET friends_count = friends_count + 1 WHERE user_id = '{part_two}';"
+                await execute_query(increase_friend_count)
+            except:
+                pass
+
+            await bot.send_message(chat_id=part_two, text=f"👤{message.from_user.first_name} siz yuborgan link orqali tashrif buyurdi.")
+            await message.reply(f"Assalomu alaykum, xush kelibsiz {message.from_user.first_name}!\nIltimos quyidagi bir qancha savollarga javob berishingizni so'raymiz!")
+            await message.answer("Iltimos, ismingizni kiriting:")
+            await state.set_state(WelcomePoll.user_fullname)
+            return
+        else:
+            phone_number, book_id = part_one, part_two
+            print(phone_number, book_id)
+            query = f"SELECT start_msg_id, links FROM start_messages WHERE start_msg_id = '{book_id}';"
+            messages = await fetch_query(query)
+            links = messages[0]['links']
+            with open('extras/messages.json', 'r') as file:
+                data = json.load(file)
+
+                for link in links:
+                    try:
+                        if link.startswith("$start_msg"):
+                            # Use local message.
+                            message_key = link[1:]
+                            if message_key not in data:
+                                logging.error(f"No local message found for key '{message_key}'")
+                                continue
+                            else:
+                                book_name = await fetch_query(f"SELECT book_name FROM books WHERE book_id = '{book_id}';")
+                                message_text = data[message_key]
+                                personalized_text = message_text.replace("$name", message.from_user.first_name).replace("$book_name", book_name[0]['book_name'])
+                                await bot.send_message(message.chat.id, personalized_text, disable_web_page_preview=True)
+                        else:
+                            message_id_extracted = await extract_message_id(link)
+                            if not message_id_extracted:
+                                logging.error(f"Failed to extract message id from link: {link}")
+                                continue
+                            await bot.copy_message(message.chat.id, CHANNEL_ID, message_id_extracted)
+                    except Exception as e:
+                        logging.error(f"Error sending message for user with link {link}: {e}")
+
+
+            user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
+            await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, phone_number))
+
+    else:
+        await message.reply(f"Assalomu alekum, {message.from_user.first_name}. \nXush kelibsiz!", reply_markup=kb.main_menu_button)
+
+        user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
+        await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, None))
