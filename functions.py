@@ -556,7 +556,7 @@ async def handle_start_message(message, state):
                                 logging.error(f"No local message found for key '{message_key}'")
                                 continue
                             else:
-                                book = await fetch_query(f"SELECT book_name FROM books WHERE book_id = '{book_id}';")
+                                book_name = await fetch_query(f"SELECT book_name FROM books WHERE book_id = '{book_id}';")
                                 message_text = data[message_key]
                                 personalized_text = message_text.replace("$name", message.from_user.first_name).replace("$book_name", book_name['book_name'])
                                 await bot.send_message(message.chat.id, personalized_text, disable_web_page_preview=True)
