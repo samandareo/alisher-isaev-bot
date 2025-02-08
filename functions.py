@@ -527,7 +527,6 @@ async def handle_start_message(message, state):
             user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
             await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, None))
             
-            await execute_query(f"UPDATE users SET friends_count = friends_count + 1 WHERE user_id = '{part_two}';")
             try:
                 increase_friend_count = f"UPDATE users SET friends_count = friends_count + 1 WHERE user_id = '{part_two}';"
                 await execute_query(increase_friend_count)
