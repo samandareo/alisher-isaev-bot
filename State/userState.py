@@ -41,3 +41,4 @@ class WelcomePoll(StatesGroup):
     user_fullname = State()
     user_phone = State()
     user_job = State()
+    referred_by = State()

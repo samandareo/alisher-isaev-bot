@@ -285,7 +285,7 @@ async def get_users_data_as_excel():
 async def get_registered_users():
     try:
         query = """
-        SELECT user_id, user_fullname, phone_number, job, DATE(date) as date
+        SELECT user_id, user_fullname, phone_number, job, DATE(date) as date, referred_by
         FROM user_poll
         """
         data = await fetch_query(query=query)
@@ -293,7 +293,7 @@ async def get_registered_users():
             return "Ma'lumot mavjud emas!"
         df = pd.DataFrame(data)
 
-        df.columns = ['user_id', 'user_fullname', 'phone_number', 'job', 'date']
+        df.columns = ['user_id', 'user_fullname', 'phone_number', 'job', 'date', 'referred_by']
 
         now = datetime.now().strftime("%Y_%m_%d")
         df.to_excel(f'extras/registered_users_{now}.xlsx', index=False)
@@ -469,12 +469,14 @@ async def delete_book(book_id):
         return None
 
 async def get_statistic(user_id):
-    query = "SELECT * FROM users;"
+    query = "SELECT id, user_id, name, friends_count FROM users;"
     users = await fetch_query(query)
     df = pd.DataFrame(users)
-    df.columns = ['id', 'user_id', 'username', 'name', 'phone_number', 'created_at', 'updated_at', 'cur_msg_id', 'is_check', 'friends_count']
+    df.columns = ['id', 'user_id', 'name', 'friends_count']
     # I need to create a new column as user_rank based on their the number of friends
     df['user_rank'] = df['friends_count'].rank(method='min', ascending=False).astype(int)
+
+    logging.info(f"Users: {df.head()}")
 
     sorted_df = df.sort_values(by="friends_count", ascending=False)
     sorted_df["user_rank"] = range(1, len(sorted_df) + 1)
@@ -529,8 +531,10 @@ async def handle_start_message(message, state):
             try:
                 increase_friend_count = f"UPDATE users SET friends_count = friends_count + 1 WHERE user_id = '{part_two}';"
                 await execute_query(increase_friend_count)
+                await state.update_data(referred_by=part_two)
             except:
                 pass
+        
 
             await bot.send_message(chat_id=part_two, text=f"👤{message.from_user.first_name} siz yuborgan link orqali tashrif buyurdi.")
             await message.reply(f"Assalomu alaykum, xush kelibsiz {message.from_user.first_name}!\nIltimos quyidagi bir qancha savollarga javob berishingizni so'raymiz!")

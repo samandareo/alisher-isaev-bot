@@ -86,33 +86,52 @@ async def send_report(bot, report: dict) -> None:
     except Exception as e:
         logging.error(f"Error sending report: {e}")
 
-async def process_users(bot, users: list, report: dict) -> None:
-    """Process users concurrently with a semaphore to limit concurrency."""
-    semaphore = asyncio.Semaphore(10)  # Limit concurrency to 10 tasks.
+async def process_users(bot, users: list, report: dict, batch_size: 100) -> None:
+    """
+    Process users in batches with controlled concurrency to avoid excessive load.
+    :param bot: The aiogram Bot instance.
+    :param users: List of user dictionaries from the database.
+    :param report: Dictionary tracking message counts.
+    :param batch_size: Number of users processed per batch.
+    """
+    semaphore = asyncio.Semaphore(10)  # Limit concurrency to 10 tasks at a time.
 
     async def process_single_user(user: dict) -> None:
+        """Process a single user with concurrency control."""
         async with semaphore:
             try:
                 user_id = user["user_id"]
                 name = user["name"]
                 msg_id = user["msg_id"]
                 links = user["links"]
+
+                # convert links to list: we get them as string from the database
                 if isinstance(links, str):
                     links = json.loads(links)
+
                 await send_message(bot, name, user_id, msg_id, links, report)
+
                 await asyncio.sleep(0.05)
             except Exception as e:
                 logging.error(f"Error processing user {user.get('user_id')}: {e}")
 
-    tasks = [process_single_user(user) for user in users]
-    await asyncio.gather(*tasks)
+    for i in range(0, len(users), batch_size):
+        batch = users[i:i + batch_size]
+        logging.info(f"Processing batch {i // batch_size + 1}/{(len(users) // batch_size) + 1}")
+
+        tasks = [process_single_user(user) for user in batch]
+        await asyncio.gather(*tasks)
+
+        await asyncio.sleep(0.05)
+
+    logging.info("Finished processing all users.")
 
 async def get_users_for_send_messages(bot) -> None:
     """
     Fetch users due for receiving messages and process them.
     :param bot: The aiogram Bot instance.
     """
-    # Initialize the report with message IDs.
+
     query = "SELECT msg_id FROM messages;"
     rows = await fetch_query(query)
     report = {row['msg_id']: 0 for row in rows}
@@ -130,7 +149,7 @@ async def get_users_for_send_messages(bot) -> None:
         return
 
     if users:
-        await process_users(bot, users, report)
+        await process_users(bot, users, report, batch_size=100)  # Use batch processing
         await send_report(bot, report)
     else:
         logging.info("No users to process at this time.")
