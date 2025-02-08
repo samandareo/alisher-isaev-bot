@@ -82,8 +82,8 @@ async def take_phone(message: Message, state: FSMContext) -> None:
 @dp.callback_query(WelcomePoll.user_job)
 async def take_job(callback_data: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
-    adding_info_query = f"INSERT INTO user_poll (user_id, user_fullname, phone_number, job, date, referred_by) VALUES ($1, $2, $3, $4, $5, NOW()) ON CONFLICT (user_id) DO NOTHING"
-    await execute_query(adding_info_query,(str(callback_data.from_user.id), data['user_fullname'], data['user_phone'], callback_data.data, data['referred_by']))
+    adding_info_query = f"INSERT INTO user_poll (user_id, user_fullname, phone_number, job, date, referred_by) VALUES ($1, $2, $3, $4, NOW(), $5) ON CONFLICT (user_id) DO NOTHING"
+    await execute_query(adding_info_query,(str(callback_data.from_user.id), data['user_fullname'], data['user_phone'], callback_data.data, str(data['referred_by'])))
     await callback_data.message.reply(f"Savollarimizga javob berganingiz uchun tashakkur {data.get('user_fullname')}!", reply_markup=kb.main_menu_button)
     await state.clear()
     return
