@@ -299,15 +299,13 @@ async def handle_start_message(message, state):
     special_data = message.text.split('/start ')[1] if '/start ' in message.text else None
     if special_data and special_data == 'all':
         await message.reply(f"Assalomu alekum, {message.from_user.first_name}. \nXush kelibsiz!\n\nQuyida barcha kitoblarni ko'rishingiz mumkin!", reply_markup=kb.main_menu_button)
-        msg_url = await fetch_query(f"SELECT b.book_location_link FROM books b;")
+        msg_url = await fetch_query(f"SELECT book_location_link FROM books")
         for msg in msg_url:
             pattern = r"https://t\.me/c/2343907878/(\d+)"
             match = re.match(pattern, msg['book_location_link'])
             if match:
                 msg_id = int(match.group(1))
             
-            if msg_id ==31:
-                continue
             await bot.copy_message(chat_id=message.chat.id, from_chat_id=CHANNEL_ID, message_id=msg_id, protect_content=True)
         user_data_query = f"INSERT INTO users (user_id, username, name, phone_number, created_at) VALUES ($1, $2, $3, $4, NOW()) ON CONFLICT (user_id) DO NOTHING;"
         await execute_query(user_data_query,(str(message.from_user.id), message.from_user.username, message.from_user.first_name, None))
