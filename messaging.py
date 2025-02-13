@@ -62,7 +62,7 @@ async def send_message(bot, name: str, user_id: str, msg_id: int, links: list, r
                     logging.error(f"Failed to extract message id from link: {link}")
                     success = False
                     continue
-                await bot.copy_message(user_id, CHANNEL_ID, message_id_extracted)
+                await bot.copy_message(user_id, CHANNEL_ID, message_id_extracted, protect_content=True)
         except Exception as e:
             success = False
             logging.error(f"Error sending message for user {user_id} with link {link}: {e}")

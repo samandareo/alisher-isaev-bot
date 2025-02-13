@@ -158,9 +158,9 @@ async def rasilka(users, message):
             if message.text:
                 await bot.send_message(user['user_id'],message.text.replace("$name", user['name']), disable_web_page_preview=True)
             elif message.caption:
-                await bot.copy_message(user['user_id'],message.chat.id,message.message_id, caption=message.caption.replace("$name", user['name']))
+                await bot.copy_message(user['user_id'],message.chat.id,message.message_id, caption=message.caption.replace("$name", user['name']), protect_content=True)
             elif not message.text and not message.caption:
-                await bot.copy_message(user['user_id'],message.chat.id,message.message_id)
+                await bot.copy_message(user['user_id'],message.chat.id,message.message_id, protect_content=True)
             print(f"Message sent to {user['name']} ({user['user_id']})")
             cnt += 1
         except TelegramRetryAfter as e:
@@ -169,9 +169,9 @@ async def rasilka(users, message):
             if message.text:
                 await bot.send_message(user['user_id'],message.text.replace("$name", user['name']), disable_web_page_preview=True)
             elif message.caption:
-                await bot.copy_message(user['user_id'],message.chat.id,message.message_id, caption=message.caption.replace("$name", user['name']))
+                await bot.copy_message(user['user_id'],message.chat.id,message.message_id, caption=message.caption.replace("$name", user['name']), protect_content=True)
             elif not message.text and not message.caption:
-                await bot.copy_message(user['user_id'],message.chat.id,message.message_id)
+                await bot.copy_message(user['user_id'],message.chat.id,message.message_id, protect_content=True)
             print(f"Message sent to {user['name']} ({user['user_id']})")
             cnt += 1
 
