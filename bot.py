@@ -24,7 +24,8 @@ import Keyboards.keyboards as kb
 from credentials import admins, CHANNEL_ID
 
 # send messages for users
-from messaging import get_users_for_send_messages
+from messaging import get_users_for_send_messages, reload_messages_cache
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -610,8 +611,15 @@ async def take_input(message: Message, state: FSMContext):
             file = FSInputFile(path,filename=path[7:])
             await bot.send_document(chat_id=message.chat.id, document=file,caption="Ro'yxatdan o'tgan foydalanuvchilar ro'yxati")
 
-    elif message.text == '/test':
-        await bot.send_message(chat_id=REPORT_ID, text="Test xabar")
+    elif message.text == '/refresh':
+        if message.from_user.id not in admins:
+            await message.answer("Siz admin emassiz!")
+            return
+        try:
+            await reload_messages_cache()
+            await message.answer("Messages cache reloaded successfully.")
+        except Exception as e:
+            await message.answer(f"Error reloading messages.json: {e}")
     elif message.text == '/polls':
         if message.text == '!cancel':
             await message.reply("Jarayon bekor qilindi")

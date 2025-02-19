@@ -10,12 +10,16 @@ from credentials import CHANNEL_ID, REPORT_ID
 MESSAGE_ID_REGEX = re.compile(r'https://t\.me/c/\d+/(\d+)')
 
 # Load the local messages cache once.
-try:
-    with open('extras/messages.json', 'r') as file:
-        MESSAGES_CACHE = json.load(file)
-except Exception as e:
-    logging.error(f"Error loading messages.json: {e}")
-    MESSAGES_CACHE = {}
+async def reload_messages_cache() -> None:
+    """Reload the local messages cache from file."""
+    global MESSAGES_CACHE
+    try:
+        with open('extras/messages.json', 'r') as file:
+            MESSAGES_CACHE = json.load(file)
+        logging.info("Messages cache reloaded successfully.")
+    except Exception as e:
+        logging.error(f"Error reloading messages.json: {e}")
+
 
 async def extract_message_id(url: str) -> str:
     """Extract the message ID from a Telegram link."""
