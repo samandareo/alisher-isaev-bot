@@ -9,6 +9,8 @@ from credentials import CHANNEL_ID, REPORT_ID
 # Precompile regex for efficiency.
 MESSAGE_ID_REGEX = re.compile(r'https://t\.me/c/\d+/(\d+)')
 
+MESSAGES_CACHE = {}
+
 # Load the local messages cache once.
 async def reload_messages_cache() -> None:
     """Reload the local messages cache from file."""
@@ -28,6 +30,7 @@ async def extract_message_id(url: str) -> str:
 
 async def get_message_text_from_local(message_id: str) -> str:
     """Retrieve a message text from the local cache."""
+    global MESSAGES_CACHE
     return MESSAGES_CACHE.get(message_id, "")
 
 async def update_user(user_id: str, current_msg_id: int) -> None:
