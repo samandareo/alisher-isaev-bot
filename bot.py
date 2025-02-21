@@ -676,8 +676,8 @@ async def take_input(message: Message, state: FSMContext):
         if message.from_user.id not in admins:
             await message.answer("Siz admin emassiz!")
             return
-        await message.answer("Foydalanuvchini ID raqamini kiriting.")
-        await state.set_state(AdminStateOne.userOneId)
+        await message.answer("Xabarni qaysi turda yuborishni hohlaysiz?", reply_markup=kb.send_message_type)
+        await state.set_state(AdminStateOne.admin_action)
         return
     elif message.text == 'Murojaat':
         await message.reply("Iltimos, murojaat xabarini yuboring.", reply_markup=ReplyKeyboardRemove())

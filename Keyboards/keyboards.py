@@ -3,11 +3,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMar
 main_menu_button = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="Murojaat")
-        ],
-        [
-            KeyboardButton(text="📊Statistika"),
-            KeyboardButton(text="🤝Do'stlarni taklif qilish")
+            KeyboardButton(text="Murojaat"),
         ]
     ],
     resize_keyboard=True
