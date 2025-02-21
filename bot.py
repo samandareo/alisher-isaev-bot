@@ -238,11 +238,11 @@ async def send_to_one(message: Message, state: FSMContext) -> None:
     user = await fetch_query(f"SELECT name FROM users WHERE user_id = '{user_id}';")
     try:
         if message.text:
-            await bot.send_message(chat_id=user_id,text=message_text.replace("$name", user[0]['name']), disable_web_page_preview=True)
+            await bot.send_message(chat_id=user_id,text=message_text.replace("$name", user[0]['name']), disable_web_page_preview=True, parse_mode=ParseMode.HTML)
         elif message.caption:
-            await bot.copy_message(user_id,message.chat.id,message.message_id, caption=message.caption.replace("$name", user[0]['name']))
+            await bot.copy_message(user_id,message.chat.id,message.message_id, caption=message.caption.replace("$name", user[0]['name']), parse_mode=ParseMode.HTML)
         elif not message.text and not message.caption:
-            await bot.copy_message(user_id,message.chat.id,message.message_id)
+            await bot.copy_message(user_id,message.chat.id,message.message_id, parse_mode=ParseMode.HTML)
         await message.answer("Xabar jo'natildi!")
     except Exception as e:
         if 'Forbidden' in str(e):
