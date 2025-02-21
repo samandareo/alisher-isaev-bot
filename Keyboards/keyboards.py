@@ -90,7 +90,7 @@ send_message_type = InlineKeyboardMarkup(
     inline_keyboard=[
         [
             InlineKeyboardButton(text="SEND", callback_data="send_type_message"),
-            InlineKeyboardButton(text="COPY", callback_data="send_type_copy")
+            InlineKeyboardButton(text="COPY", callback_data="copy_type_message")
         ]
     ]
 )
