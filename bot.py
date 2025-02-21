@@ -262,7 +262,7 @@ async def choose_action_one(callback_data: CallbackQuery, state: FSMContext) -> 
         await state.set_state(AdminStateOne.send_type_message)
     elif callback_data.data == 'copy_type_message':
         await callback_data.message.answer("Foydalanuvchi ID raqamini kiriting!")
-        await state.set_state(AdminStateOne.copy_type_message)
+        await state.set_state(AdminStateOne.copy_message_text)
 
 @dp.message(AdminStateOne.send_type_message)
 async def take_message_one(message: Message, state: FSMContext) -> None:
