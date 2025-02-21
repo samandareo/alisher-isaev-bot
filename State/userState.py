@@ -5,10 +5,16 @@ class UserState(StatesGroup):
     message_text = State()
 
 class AdminState(StatesGroup):
-    message_text = State()
+    admin_action = State()
+    send_type_message = State()
+    copy_type_message = State()
 
 class AdminStateOne(StatesGroup):
     userOneId = State()
+    admin_action = State()
+    send_type_message = State()
+    copy_type_message = State()
+    copy_message_text = State()
     message_text = State()
 
 class UserMessagesToAdmin(StatesGroup):
@@ -38,6 +44,12 @@ class ChangeBooks(StatesGroup):
     book_new_id_edit = State()
 
 class WelcomePoll(StatesGroup):
+    user_fullname = State()
+    user_phone = State()
+    user_job = State()
+    referred_by = State()
+
+class WebinarPoll(StatesGroup):
     user_fullname = State()
     user_phone = State()
     user_job = State()

@@ -184,7 +184,44 @@ async def rasilka(users, message):
         await asyncio.sleep(0.05)
     await message.answer(f"Xabar {cnt} ta foydalanuvchiga jo'natildi!")
 
-@dp.message(AdminState.message_text)
+async def rasilka_copy(users, message):
+    global broadcast_task
+    cnt = 0
+    for user in users:
+        if broadcast_task is not None and broadcast_task.cancelled():
+            print("Vazifa bekor qilindi!")
+            await message.reply(f"Xabar {cnt} ta foydalanuvchiga jo'natildi!")
+            break
+        try:
+            await bot.copy_message(user['user_id'],message.chat.id,message.message_id, protect_content=True)
+            print(f"Message sent to {user['name']} ({user['user_id']})")
+            cnt += 1
+        except TelegramRetryAfter as e:
+            print(f'Rate limit exceeded. Sleeping for {e.timeout} seconds.')
+            await asyncio.sleep(e.timeout)
+            await bot.copy_message(user['user_id'],message.chat.id,message.message_id, protect_content=True)
+            print(f"Message sent to {user['name']} ({user['user_id']})")
+            cnt += 1
+
+        except Exception as e:
+            if 'Forbidden' in str(e):
+                await execute_query(f"DELETE FROM users WHERE users.user_id = '{user['user_id']}';")
+            print(e)
+            continue
+        print(f"Message sent to {user['name']} ({user['user_id']})")
+        await asyncio.sleep(0.05)
+    await message.answer(f"Xabar {cnt} ta foydalanuvchiga jo'natildi!")
+
+@dp.callback_query(AdminState.admin_action)
+async def choose_action(callback_data: CallbackQuery, state: FSMContext) -> None:
+    if callback_data.data == 'send_type_message':
+        await callback_data.message.answer("Xabar matnini yuboring")
+        await state.set_state(AdminState.send_type_message)
+    elif callback_data.data == 'copy_type_message':
+        await callback_data.message.answer("Xabar matnini yuboring")
+        await state.set_state(AdminState.copy_type_message)
+
+@dp.message(AdminState.send_type_message)
 async def send_to_all(message: Message, state: FSMContext) -> None:
     global brodcast_task
     message_text = message.text
@@ -203,7 +240,31 @@ async def send_to_all(message: Message, state: FSMContext) -> None:
 
     await state.clear()
 
-@dp.message(AdminStateOne.userOneId)
+@dp.message(AdminState.copy_type_message)
+async def copy_to_all(message: Message, state: FSMContext) -> None:
+    global broadcast_task
+    if message.text == '!cancel':
+        await message.reply("Jarayon bekor qilindi")
+        await state.clear()
+        return
+    users = await fetch_query("SELECT user_id, name FROM users;")
+    try:
+        broadcast_task = asyncio.create_task(rasilka_copy(users, message))
+        await message.answer("Rasilka boshlandi!")
+    except Exception as e:
+        logger.info(f"Error sending message to users: {e}")
+    await state.clear()
+
+@dp.callback_query(AdminStateOne.admin_action)
+async def choose_action_one(callback_data: CallbackQuery, state: FSMContext) -> None:
+    if callback_data.data == 'send_type_message':
+        await callback_data.message.answer("Foydalanuvchi ID raqamini kiriting!")
+        await state.set_state(AdminStateOne.send_type_message)
+    elif callback_data.data == 'copy_type_message':
+        await callback_data.message.answer("Foydalanuvchi ID raqamini kiriting!")
+        await state.set_state(AdminStateOne.copy_type_message)
+
+@dp.message(AdminStateOne.send_type_message)
 async def take_message_one(message: Message, state: FSMContext) -> None:
     msg_text = str(message.text)
     print(msg_text)
@@ -243,6 +304,49 @@ async def send_to_one(message: Message, state: FSMContext) -> None:
             await bot.copy_message(user_id,message.chat.id,message.message_id, caption=message.caption.replace("$name", user[0]['name']), parse_mode=ParseMode.MARKDOWN)
         elif not message.text and not message.caption:
             await bot.copy_message(user_id,message.chat.id,message.message_id, parse_mode=ParseMode.MARKDOWN)
+        await message.answer("Xabar jo'natildi!")
+    except Exception as e:
+        if 'Forbidden' in str(e):
+            await execute_query(f"DELETE FROM users WHERE users.user_id = '{user_id}';")
+        print(e)
+    await state.clear()
+
+@dp.message(AdminStateOne.copy_type_message)
+async def take_message_one(message: Message, state: FSMContext) -> None:
+    msg_text = str(message.text)
+    print(msg_text)
+    if msg_text == '!cancel':
+        await message.reply("Jarayon bekor qilindi!")
+        await state.clear()
+        return
+    else:
+        wait_message = await message.answer("Foydalanuvchi qidirilmoqda...")
+        check = await fetch_query("SELECT * FROM users WHERE user_id = $1;", (msg_text,))
+
+    if not check:
+        await wait_message.edit_text("Foydalanuvchi topilmadi😕")
+        await state.clear()
+        return
+    else:
+        await state.update_data(user_id=message.text)
+        found_msg_text = f"Foydalanuvchi topildi.\nUser ID: {check[0]['user_id']}\nName: {check[0]['name']}\nUsername: {check[0]['username']}\nPhone number: {check[0]['phone_number']}\n\nFoydalanuvchiga yuborishni xoxlagan xabarni kiriting."
+        await wait_message.edit_text(found_msg_text)
+        await state.set_state(AdminStateOne.copy_message_text)
+
+@dp.message(AdminStateOne.copy_message_text)
+async def send_to_one(message: Message, state: FSMContext) -> None:
+    if message.text == '!cancel':
+        await message.reply("Jarayon bekor qilindi!")
+        await state.clear()
+        return
+    
+    await state.update_data(message_text=message.text)
+    new_data = await state.get_data()
+    user_id = new_data.get('user_id')
+    message_text = new_data.get('message_text')
+
+    try:
+        await bot.copy_message(user_id,message.chat.id,message.message_id, protect_content=True)
         await message.answer("Xabar jo'natildi!")
     except Exception as e:
         if 'Forbidden' in str(e):
@@ -565,8 +669,8 @@ async def take_input(message: Message, state: FSMContext):
         if message.from_user.id not in admins:
             await message.answer("Siz admin emassiz!")
             return
-        await message.answer("Foydalanuvchilarga yuborishni xoxlagan xabarni kiriting.")
-        await state.set_state(AdminState.message_text)
+        await message.answer("Qaysi turda yuborishni xoxlaysiz", reply_markup=kb.send_message_type)
+        await state.set_state(AdminState.admin_action)
         return
     elif message.text == '/sendOne':
         if message.from_user.id not in admins:
