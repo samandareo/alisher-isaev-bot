@@ -791,6 +791,7 @@ async def scheduler_task():
 
 async def main() -> None:
     await init_db()
+    await reload_messages_cache()
     scheduler.start()
     await dp.start_polling(bot)
 
