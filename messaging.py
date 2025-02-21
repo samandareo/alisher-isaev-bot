@@ -10,7 +10,6 @@ from credentials import CHANNEL_ID, REPORT_ID
 MESSAGE_ID_REGEX = re.compile(r'https://t\.me/c/\d+/(\d+)')
 
 MESSAGES_CACHE = {}
-
 # Load the local messages cache once.
 async def reload_messages_cache() -> None:
     """Reload the local messages cache from file."""
@@ -62,6 +61,7 @@ async def send_message(bot, name: str, user_id: str, msg_id: int, links: list, r
                     continue
                 personalized_text = message_text.replace("$name", name)
                 await bot.send_message(user_id, personalized_text, disable_web_page_preview=True)
+                success = True
             else:
                 # Copy message from the channel.
                 message_id_extracted = await extract_message_id(link)
@@ -70,6 +70,7 @@ async def send_message(bot, name: str, user_id: str, msg_id: int, links: list, r
                     success = False
                     continue
                 await bot.copy_message(user_id, CHANNEL_ID, message_id_extracted, protect_content=True)
+                success = True
         except Exception as e:
             success = False
             logging.error(f"Error sending message for user {user_id} with link {link}: {e}")

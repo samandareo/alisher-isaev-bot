@@ -23,7 +23,7 @@ import Keyboards.keyboards as kb
 from credentials import admins, CHANNEL_ID
 
 # send messages for users
-from messaging import get_users_for_send_messages, reload_messages_cache
+from messaging import get_users_for_send_messages, reload_messages_cache, get_message_text_from_local
 
 
 logging.basicConfig(level=logging.INFO)
@@ -665,6 +665,16 @@ async def take_input(message: Message, state: FSMContext):
         await message.answer("Please enter the message number you want to change.(start with msg or start_msg)")
         await state.set_state(UserState.message_text_id)
         return
+    elif message.text.startswith('/getMessage'):
+        if message.from_user.id not in admins:
+            await message.answer("Siz admin emassiz!")
+            return
+        
+        id = message.text.split(' ')[1]
+        text = await get_message_text_from_local(id)
+        await message.reply(f"{message.text} ostidagi xabar")
+        await message.answer(text)
+
     elif message.text == '/send':
         if message.from_user.id not in admins:
             await message.answer("Siz admin emassiz!")
@@ -774,6 +784,7 @@ async def take_input(message: Message, state: FSMContext):
 
 @scheduler.scheduled_job('interval', minutes=10)
 async def scheduler_task():
+    await reload_messages_cache()
     await get_users_for_send_messages(bot=bot)
 
 
